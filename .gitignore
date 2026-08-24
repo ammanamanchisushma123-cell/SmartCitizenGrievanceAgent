@@ -1,0 +1,5 @@
+.env
+smart_governance.db
+__pycache__/
+*.pyc
+uploads/*
