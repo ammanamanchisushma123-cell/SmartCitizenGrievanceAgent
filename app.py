@@ -12,6 +12,7 @@ A comprehensive, AI-powered citizen-government service portal featuring:
 """
 
 import os
+import html
 import streamlit as st
 import pandas as pd
 from PIL import Image
@@ -1001,7 +1002,7 @@ def render_login_signup():
         
         # SMS Configuration Notification
         if not otp.is_sms_configured():
-            st.info("ℹ️ **SMS Gateway Notice**: Real SMS OTP provider credentials are not currently configured in the environment. Direct registration is enabled with secure password hashing.")
+            st.info("ℹ️ **SMS Gateway Notice**: Real SMS OTP credentials are not configured. Registration is disabled by default until phone verification is available. For local development only, set ALLOW_UNVERIFIED_SIGNUP=true.")
 
         with st.form("signup_form"):
             r_name = st.text_input(f"{tr('LABEL_FULL_NAME')} *")
@@ -1068,7 +1069,7 @@ def render_login_signup():
 
 def render_user_profile(user: dict):
     st.markdown(f"## 👤 {tr('PROFILE_TITLE')}")
-    st.markdown(f"Welcome back, **{user['full_name']}**! Access your registered complaints, escalations, and manage account settings.")
+    st.write(f"Welcome back, {user['full_name']}! Access your registered complaints, escalations, and manage account settings.")
 
     p_tab1, p_tab2, p_tab3, p_tab4 = st.tabs([
         f"📋 {tr('MY_COMPLAINTS')}",
@@ -1100,9 +1101,9 @@ def render_user_profile(user: dict):
             for e in my_esc:
                 st.markdown(f"""
                 <div style="background:#f8fafc; border-left:4px solid #ea580c; padding:1rem; border-radius:6px; margin-bottom:0.75rem;">
-                    <strong>Escalation for {e['complaint_id']}</strong> ({e['escalation_level']})<br>
-                    <strong>Reason</strong>: {e['reason']}<br>
-                    <strong>Authority</strong>: {e['authority_name']} | <strong>Helpline</strong>: {e['helpline']}
+                    <strong>Escalation for {html.escape(str(e.get('complaint_id', '')))}</strong> ({html.escape(str(e.get('escalation_level', '')))})<br>
+                    <strong>Reason</strong>: {html.escape(str(e.get('reason', '')))}<br>
+                    <strong>Authority</strong>: {html.escape(str(e.get('authority_name', '')))} | <strong>Helpline</strong>: {html.escape(str(e.get('helpline', '')))}
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -1113,8 +1114,22 @@ def render_user_profile(user: dict):
         with st.form("edit_profile_form"):
             e_name = st.text_input("Full Name", value=user["full_name"])
             e_email = st.text_input("Email", value=user["email"])
-            e_state = st.selectbox("State", options=["Andhra Pradesh", "Telangana", "Karnataka", "Tamil Nadu"], index=0)
-            e_district = st.text_input("District", value=user["district"])
+            profile_states = ["Andhra Pradesh", "Telangana", "Karnataka", "Tamil Nadu"]
+            current_state = user.get("state", "Andhra Pradesh")
+            state_index = profile_states.index(current_state) if current_state in profile_states else 0
+            e_state = st.selectbox("State", options=profile_states, index=state_index)
+            profile_districts = {
+                "Andhra Pradesh": ["Vijayawada", "Visakhapatnam", "Guntur", "Tirupati", "Nellore", "Kurnool", "Kadapa", "Anantapur", "Srikakulam", "Rajahmundry"],
+                "Telangana": ["Hyderabad", "Warangal", "Nizamabad", "Karimnagar", "Khammam"],
+                "Karnataka": ["Bengaluru", "Mysuru", "Hubballi", "Mangaluru", "Belagavi"],
+                "Tamil Nadu": ["Chennai", "Coimbatore", "Madurai", "Tiruchirappalli", "Salem"]
+            }
+            districts_for_state = profile_districts.get(e_state, [])
+            saved_district = user.get("district", "")
+            if saved_district and saved_district not in districts_for_state:
+                districts_for_state = [saved_district] + districts_for_state
+            district_index = districts_for_state.index(saved_district) if saved_district in districts_for_state else 0
+            e_district = st.selectbox("District", options=districts_for_state, index=district_index)
             update_btn = st.form_submit_button("Update Profile", type="primary")
 
         if update_btn:
