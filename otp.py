@@ -218,18 +218,18 @@ def verify_otp(mobile: str, code: str, purpose: str = "signup") -> Tuple[bool, s
     if record["attempts"] >= record["max_attempts"]:
         return False, "Maximum verification attempts exceeded. Please request a new OTP."
 
-    # Increment attempt count
-    database.execute_update(
-        "UPDATE otp_records SET attempts = attempts + 1 WHERE id = ?",
-        (record["id"],)
-    )
-
-    # Verify with external provider
+    # Verify with external provider first so outages do not consume attempts.
     success, msg = _provider.check_verification(clean_mobile, clean_code)
 
     if success:
         database.execute_update(
             "UPDATE otp_records SET verified = 1 WHERE id = ?",
+            (record["id"],)
+        )
+    elif "error" not in msg.lower() and "failed" not in msg.lower():
+        # Count only definitive invalid-code responses, not provider errors.
+        database.execute_update(
+            "UPDATE otp_records SET attempts = attempts + 1 WHERE id = ?",
             (record["id"],)
         )
 
