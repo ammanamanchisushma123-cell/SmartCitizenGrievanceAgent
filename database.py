@@ -162,7 +162,7 @@ def init_db() -> None:
 
 def _provision_admin_from_env(conn: sqlite3.Connection) -> None:
     """Promotes only an existing phone-verified account matching ADMIN_MOBILE."""
-    admin_mobile = re.sub(r"[^\\d]", "", os.getenv("ADMIN_MOBILE", ""))
+    admin_mobile = re.sub(r"[^\d]", "", os.getenv("ADMIN_MOBILE", ""))
     if len(admin_mobile) != 10:
         return
     conn.execute(
