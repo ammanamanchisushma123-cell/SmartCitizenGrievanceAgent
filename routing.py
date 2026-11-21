@@ -122,14 +122,14 @@ def route_grievance(
     model = get_model()
     predicted_dept = model.predict([clean_text])[0]
 
-    # Calculate prediction confidence if supported
-    confidence = 0.85
+    # Calculate confidence only when the model can provide it reliably.
+    confidence = None
     if hasattr(model, "predict_proba"):
         try:
             probas = model.predict_proba([clean_text])[0]
             confidence = float(max(probas))
         except Exception:
-            pass
+            confidence = None
 
     # 2. Enrich with Dataset Metadata
     df = get_dataset()
@@ -138,9 +138,8 @@ def route_grievance(
     dept_mask = df["recommended_department"].str.lower() == predicted_dept.lower()
     dept_df = df[dept_mask]
 
-    if dept_df.empty:
-        # Fallback to closest department match
-        dept_df = df[df["recommended_department"].str.contains(predicted_dept, case=False, na=False)]
+    # Avoid fuzzy substring matching, which can select an unrelated department.
+    # If there is no exact match, use the generic safe defaults below.
 
     matched_row = None
 
@@ -186,7 +185,7 @@ def route_grievance(
         "recommended_department": predicted_dept,
         "service_category": service_cat,
         "priority": priority,
-        "confidence_score": round(confidence, 3),
+        "confidence_score": round(confidence, 3) if confidence is not None else None,
         "state": state,
         "district": district,
         "recommended_helpline": helpline,
