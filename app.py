@@ -751,7 +751,10 @@ def render_escalation_form(complaint_id: str):
 
         ev_path = None
         if esc_evidence:
-            _, _, saved_ev = routing.save_evidence_file(esc_evidence)
+            evidence_ok, evidence_msg, saved_ev = routing.save_evidence_file(esc_evidence)
+            if not evidence_ok:
+                st.error(evidence_msg)
+                return
             ev_path = saved_ev
 
         user = st.session_state.get("user")
@@ -1125,7 +1128,7 @@ def render_user_profile(user: dict):
                 "Tamil Nadu": ["Chennai", "Coimbatore", "Madurai", "Tiruchirappalli", "Salem"]
             }
             districts_for_state = profile_districts.get(e_state, [])
-            saved_district = user.get("district", "")
+            saved_district = user.get("district", "") if current_state == e_state else ""
             if saved_district and saved_district not in districts_for_state:
                 districts_for_state = [saved_district] + districts_for_state
             district_index = districts_for_state.index(saved_district) if saved_district in districts_for_state else 0
