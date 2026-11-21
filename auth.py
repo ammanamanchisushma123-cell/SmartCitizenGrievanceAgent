@@ -46,8 +46,14 @@ def validate_email(email: str) -> bool:
 
 def validate_password_strength(password: str) -> Tuple[bool, str]:
     """Validates password complexity requirements."""
-    if len(password) < 6:
-        return False, "Password must be at least 6 characters long."
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters long."
+    if not re.search(r"[A-Z]", password):
+        return False, "Password must contain an uppercase letter."
+    if not re.search(r"[a-z]", password):
+        return False, "Password must contain a lowercase letter."
+    if not re.search(r"\\d", password):
+        return False, "Password must contain a digit."
     return True, ""
 
 
