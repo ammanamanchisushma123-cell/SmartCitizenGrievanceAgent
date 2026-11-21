@@ -226,8 +226,8 @@ def verify_otp(mobile: str, code: str, purpose: str = "signup") -> Tuple[bool, s
             "UPDATE otp_records SET verified = 1 WHERE id = ?",
             (record["id"],)
         )
-    elif "error" not in msg.lower() and "failed" not in msg.lower():
-        # Count only definitive invalid-code responses, not provider errors.
+    elif msg.strip() == "Invalid or expired verification code. Please check and try again.":
+        # Count only the provider's explicit invalid-code result, not gateway errors.
         database.execute_update(
             "UPDATE otp_records SET attempts = attempts + 1 WHERE id = ?",
             (record["id"],)
