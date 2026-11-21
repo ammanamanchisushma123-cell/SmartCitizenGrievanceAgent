@@ -12,6 +12,7 @@ A comprehensive, AI-powered citizen-government service portal featuring:
 """
 
 import os
+import html
 import streamlit as st
 import pandas as pd
 from PIL import Image
@@ -287,7 +288,7 @@ def render_sidebar():
     # User status snippet in sidebar
     user = st.session_state.get("user")
     if user:
-        st.sidebar.success(f"👤 Logged in as: **{user['full_name']}**")
+        st.sidebar.write("👤 Logged in as:", user["full_name"])
         if user.get("is_admin"):
             st.sidebar.info("⭐ Role: **Portal Administrator**")
     else:
@@ -750,7 +751,10 @@ def render_escalation_form(complaint_id: str):
 
         ev_path = None
         if esc_evidence:
-            _, _, saved_ev = routing.save_evidence_file(esc_evidence)
+            evidence_ok, evidence_msg, saved_ev = routing.save_evidence_file(esc_evidence)
+            if not evidence_ok:
+                st.error(evidence_msg)
+                return
             ev_path = saved_ev
 
         user = st.session_state.get("user")
@@ -770,9 +774,9 @@ def render_escalation_form(complaint_id: str):
             st.markdown(f"""
             <div style="background:#f0fdf4; border:1px solid #22c55e; border-radius:8px; padding:1.25rem; margin-top:1rem;">
                 <h4>🏛️ Escalated Authority Details</h4>
-                <p><strong>Authority Name</strong>: {esc_rec['authority_name']}</p>
-                <p><strong>Helpline</strong>: <a href="tel:{esc_rec['helpline']}">{esc_rec['helpline']}</a></p>
-                <p><a href="{esc_rec['official_url']}" target="_blank" class="official-link-btn">Visit Official Portal ↗</a></p>
+                <p><strong>Authority Name</strong>: {html.escape(str(esc_rec.get('authority_name', '')))}</p>
+                <p><strong>Helpline</strong>: <a href="tel:{html.escape(str(esc_rec.get('helpline', '')), quote=True)}">{html.escape(str(esc_rec.get('helpline', '')))}</a></p>
+                <p><a href="{html.escape(str(esc_rec.get('official_url', 'https://www.india.gov.in/')), quote=True)}" target="_blank" rel="noopener noreferrer" class="official-link-btn">Visit Official Portal ↗</a></p>
             </div>
             """, unsafe_allow_html=True)
             st.session_state["show_escalation_form"] = False
@@ -1001,7 +1005,7 @@ def render_login_signup():
         
         # SMS Configuration Notification
         if not otp.is_sms_configured():
-            st.info("ℹ️ **SMS Gateway Notice**: Real SMS OTP provider credentials are not currently configured in the environment. Direct registration is enabled with secure password hashing.")
+            st.info("ℹ️ **SMS Gateway Notice**: Real SMS OTP credentials are not configured. Registration is disabled by default until phone verification is available. For local development only, set ALLOW_UNVERIFIED_SIGNUP=true.")
 
         with st.form("signup_form"):
             r_name = st.text_input(f"{tr('LABEL_FULL_NAME')} *")
@@ -1068,7 +1072,7 @@ def render_login_signup():
 
 def render_user_profile(user: dict):
     st.markdown(f"## 👤 {tr('PROFILE_TITLE')}")
-    st.markdown(f"Welcome back, **{user['full_name']}**! Access your registered complaints, escalations, and manage account settings.")
+    st.write(f"Welcome back, {user['full_name']}! Access your registered complaints, escalations, and manage account settings.")
 
     p_tab1, p_tab2, p_tab3, p_tab4 = st.tabs([
         f"📋 {tr('MY_COMPLAINTS')}",
@@ -1100,9 +1104,9 @@ def render_user_profile(user: dict):
             for e in my_esc:
                 st.markdown(f"""
                 <div style="background:#f8fafc; border-left:4px solid #ea580c; padding:1rem; border-radius:6px; margin-bottom:0.75rem;">
-                    <strong>Escalation for {e['complaint_id']}</strong> ({e['escalation_level']})<br>
-                    <strong>Reason</strong>: {e['reason']}<br>
-                    <strong>Authority</strong>: {e['authority_name']} | <strong>Helpline</strong>: {e['helpline']}
+                    <strong>Escalation for {html.escape(str(e.get('complaint_id', '')))}</strong> ({html.escape(str(e.get('escalation_level', '')))})<br>
+                    <strong>Reason</strong>: {html.escape(str(e.get('reason', '')))}<br>
+                    <strong>Authority</strong>: {html.escape(str(e.get('authority_name', '')))} | <strong>Helpline</strong>: {html.escape(str(e.get('helpline', '')))}
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -1113,8 +1117,22 @@ def render_user_profile(user: dict):
         with st.form("edit_profile_form"):
             e_name = st.text_input("Full Name", value=user["full_name"])
             e_email = st.text_input("Email", value=user["email"])
-            e_state = st.selectbox("State", options=["Andhra Pradesh", "Telangana", "Karnataka", "Tamil Nadu"], index=0)
-            e_district = st.text_input("District", value=user["district"])
+            profile_states = ["Andhra Pradesh", "Telangana", "Karnataka", "Tamil Nadu"]
+            current_state = user.get("state", "Andhra Pradesh")
+            state_index = profile_states.index(current_state) if current_state in profile_states else 0
+            e_state = st.selectbox("State", options=profile_states, index=state_index)
+            profile_districts = {
+                "Andhra Pradesh": ["Vijayawada", "Visakhapatnam", "Guntur", "Tirupati", "Nellore", "Kurnool", "Kadapa", "Anantapur", "Srikakulam", "Rajahmundry"],
+                "Telangana": ["Hyderabad", "Warangal", "Nizamabad", "Karimnagar", "Khammam"],
+                "Karnataka": ["Bengaluru", "Mysuru", "Hubballi", "Mangaluru", "Belagavi"],
+                "Tamil Nadu": ["Chennai", "Coimbatore", "Madurai", "Tiruchirappalli", "Salem"]
+            }
+            districts_for_state = profile_districts.get(e_state, [])
+            saved_district = user.get("district", "") if current_state == e_state else ""
+            if saved_district and saved_district not in districts_for_state:
+                districts_for_state = [saved_district] + districts_for_state
+            district_index = districts_for_state.index(saved_district) if saved_district in districts_for_state else 0
+            e_district = st.selectbox("District", options=districts_for_state, index=district_index)
             update_btn = st.form_submit_button("Update Profile", type="primary")
 
         if update_btn:
@@ -1138,10 +1156,10 @@ def render_user_profile(user: dict):
             <div style="background:white; border:2px solid #0b2545; border-radius:12px; padding:1.5rem; max-width:450px;">
                 <h4 style="color:#0b2545; margin:0;">🏛️ SMART CITIZEN DIGITAL ID</h4>
                 <hr style="margin:0.5rem 0;">
-                <p><strong>Name</strong>: {user['full_name']}</p>
-                <p><strong>Mobile</strong>: +91 {user['mobile']}</p>
-                <p><strong>Email</strong>: {user['email']}</p>
-                <p><strong>Jurisdiction</strong>: {user['district']}, {user['state']}</p>
+                <p><strong>Name</strong>: {html.escape(str(user.get('full_name', '')))}</p>
+                <p><strong>Mobile</strong>: +91 {html.escape(str(user.get('mobile', '')))}</p>
+                <p><strong>Email</strong>: {html.escape(str(user.get('email', '')))}</p>
+                <p><strong>Jurisdiction</strong>: {html.escape(str(user.get('district', '')))}, {html.escape(str(user.get('state', '')))}</p>
                 <p><strong>Status</strong>: Active Verified Citizen</p>
             </div>
             """, unsafe_allow_html=True)
