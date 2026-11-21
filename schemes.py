@@ -259,7 +259,9 @@ def filter_schemes(
         # 8. Tokenized Keyword search
         if search_tokens:
             text_corpus = f"{scheme['scheme_name']} {scheme['description']} {scheme['benefits']} {scheme['occupation']}".lower()
-            if not any(token in text_corpus for token in search_tokens):
+            # Require all meaningful query terms to match to avoid noisy,
+            # unrelated scheme recommendations from a single common keyword.
+            if not all(token in text_corpus for token in search_tokens):
                 continue
 
         results.append(scheme)
