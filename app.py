@@ -288,7 +288,7 @@ def render_sidebar():
     # User status snippet in sidebar
     user = st.session_state.get("user")
     if user:
-        st.sidebar.success(f"👤 Logged in as: **{user['full_name']}**")
+        st.sidebar.write("👤 Logged in as:", user["full_name"])
         if user.get("is_admin"):
             st.sidebar.info("⭐ Role: **Portal Administrator**")
     else:
@@ -771,9 +771,9 @@ def render_escalation_form(complaint_id: str):
             st.markdown(f"""
             <div style="background:#f0fdf4; border:1px solid #22c55e; border-radius:8px; padding:1.25rem; margin-top:1rem;">
                 <h4>🏛️ Escalated Authority Details</h4>
-                <p><strong>Authority Name</strong>: {esc_rec['authority_name']}</p>
-                <p><strong>Helpline</strong>: <a href="tel:{esc_rec['helpline']}">{esc_rec['helpline']}</a></p>
-                <p><a href="{esc_rec['official_url']}" target="_blank" class="official-link-btn">Visit Official Portal ↗</a></p>
+                <p><strong>Authority Name</strong>: {html.escape(str(esc_rec.get('authority_name', '')))}</p>
+                <p><strong>Helpline</strong>: <a href="tel:{html.escape(str(esc_rec.get('helpline', '')), quote=True)}">{html.escape(str(esc_rec.get('helpline', '')))}</a></p>
+                <p><a href="{html.escape(str(esc_rec.get('official_url', 'https://www.india.gov.in/')), quote=True)}" target="_blank" rel="noopener noreferrer" class="official-link-btn">Visit Official Portal ↗</a></p>
             </div>
             """, unsafe_allow_html=True)
             st.session_state["show_escalation_form"] = False
@@ -1153,10 +1153,10 @@ def render_user_profile(user: dict):
             <div style="background:white; border:2px solid #0b2545; border-radius:12px; padding:1.5rem; max-width:450px;">
                 <h4 style="color:#0b2545; margin:0;">🏛️ SMART CITIZEN DIGITAL ID</h4>
                 <hr style="margin:0.5rem 0;">
-                <p><strong>Name</strong>: {user['full_name']}</p>
-                <p><strong>Mobile</strong>: +91 {user['mobile']}</p>
-                <p><strong>Email</strong>: {user['email']}</p>
-                <p><strong>Jurisdiction</strong>: {user['district']}, {user['state']}</p>
+                <p><strong>Name</strong>: {html.escape(str(user.get('full_name', '')))}</p>
+                <p><strong>Mobile</strong>: +91 {html.escape(str(user.get('mobile', '')))}</p>
+                <p><strong>Email</strong>: {html.escape(str(user.get('email', '')))}</p>
+                <p><strong>Jurisdiction</strong>: {html.escape(str(user.get('district', '')))}, {html.escape(str(user.get('state', '')))}</p>
                 <p><strong>Status</strong>: Active Verified Citizen</p>
             </div>
             """, unsafe_allow_html=True)
