@@ -52,7 +52,7 @@ def validate_password_strength(password: str) -> Tuple[bool, str]:
         return False, "Password must contain an uppercase letter."
     if not re.search(r"[a-z]", password):
         return False, "Password must contain a lowercase letter."
-    if not re.search(r"\\d", password):
+    if not re.search(r"\d", password):
         return False, "Password must contain a digit."
     return True, ""
 
