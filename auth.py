@@ -4,6 +4,7 @@ Provides bcrypt password hashing, input validation, registration, login,
 password reset with OTP verification, and profile management.
 """
 
+import os
 import re
 import bcrypt
 from datetime import datetime
@@ -121,7 +122,10 @@ def register_user(
             return False, v_msg
         is_verified = 1
     else:
-        # SMS is not configured in environment
+        # Fail closed by default. Only local development may explicitly opt out.
+        allow_unverified = os.getenv("ALLOW_UNVERIFIED_SIGNUP", "false").strip().lower() in {"1", "true", "yes"}
+        if not allow_unverified:
+            return False, "Registration requires SMS verification. Configure the SMS provider or explicitly enable ALLOW_UNVERIFIED_SIGNUP for local development only."
         is_verified = 0
 
     # 5. Secure Hash and Insert
