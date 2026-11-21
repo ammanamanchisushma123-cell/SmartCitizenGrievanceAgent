@@ -6,6 +6,7 @@ schema migrations, and parameterized query helper functions.
 
 import sqlite3
 import os
+import re
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
@@ -151,11 +152,25 @@ def init_db() -> None:
 
     conn.commit()
 
-    # Seed Default Verified Authorities and Services if empty
+    # Seed default directories and optionally provision a verified admin account.
     _seed_authorities(conn)
     _seed_services(conn)
+    _provision_admin_from_env(conn)
 
     conn.close()
+
+
+def _provision_admin_from_env(conn: sqlite3.Connection) -> None:
+    """Promotes only an existing phone-verified account matching ADMIN_MOBILE."""
+    admin_mobile = re.sub(r"[^\\d]", "", os.getenv("ADMIN_MOBILE", ""))
+    if len(admin_mobile) != 10:
+        return
+    conn.execute(
+        "UPDATE users SET is_admin = 1, updated_at = CURRENT_TIMESTAMP "
+        "WHERE mobile = ? AND is_mobile_verified = 1",
+        (admin_mobile,)
+    )
+    conn.commit()
 
 
 def _seed_authorities(conn: sqlite3.Connection) -> None:
